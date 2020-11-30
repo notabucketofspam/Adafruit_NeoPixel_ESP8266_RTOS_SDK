@@ -36,6 +36,23 @@
 #ifndef ADAFRUIT_NEOPIXEL_H
 #define ADAFRUIT_NEOPIXEL_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Added for ESP8266
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include "driver/gpio.h"
+#include "esp_attr.h"
+#include "esp8266/eagle_soc.h"
+#include "esp8266/gpio_register.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/portmacro.h"
+#include "esp_timer.h"
+
 #ifdef ARDUINO
   #if (ARDUINO >= 100)
   #include <Arduino.h>
@@ -137,7 +154,7 @@ typedef uint16_t neoPixelType; ///< 3rd arg to Adafruit_NeoPixel constructor
 typedef uint8_t  neoPixelType; ///< 3rd arg to Adafruit_NeoPixel constructor
 #endif
 
-// These two tables are declared outside the Adafruit_NeoPixel class
+// These two tables are declared outside the Adafruit_NeoPixel struct
 // because some boards may require oldschool compilers that don't
 // handle the C++11 constexpr keyword.
 
@@ -148,7 +165,7 @@ for x in range(256):
     print("{:3},".format(int((math.sin(x/128.0*math.pi)+1.0)*127.5+0.5))),
     if x&15 == 15: print
 */
-static const uint8_t PROGMEM _NeoPixelSineTable[256] = {
+static const uint8_t _NeoPixelSineTable[256] = {
   128,131,134,137,140,143,146,149,152,155,158,162,165,167,170,173,
   176,179,182,185,188,190,193,196,198,201,203,206,208,211,213,215,
   218,220,222,224,226,228,230,232,234,235,237,238,240,241,243,244,
@@ -174,7 +191,7 @@ for x in range(256):
     print("{:3},".format(int(math.pow((x)/255.0,gamma)*255.0+0.5))),
     if x&15 == 15: print
 */
-static const uint8_t PROGMEM _NeoPixelGammaTable[256] = {
+static const uint8_t _NeoPixelGammaTable[256] = {
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
     0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  1,  1,  1,  1,  1,  1,
     1,  1,  1,  1,  2,  2,  2,  2,  2,  2,  2,  2,  3,  3,  3,  3,
@@ -192,13 +209,15 @@ static const uint8_t PROGMEM _NeoPixelGammaTable[256] = {
   182,184,186,188,191,193,195,197,199,202,204,206,209,211,213,215,
   218,220,223,225,227,230,232,235,237,240,242,245,247,250,252,255};
 
+// Added for ESP8266
+void anp_pin_mode(uint32_t pin, uint32_t mode);
+void anp_digital_write(uint32_t pin, uint32_t level);
+
 /*! 
-    @brief  Class that stores state and functions for interacting with
+    @brief  struct that stores state and functions for interacting with
             Adafruit NeoPixels and compatible devices.
 */
-class Adafruit_NeoPixel {
-
- public:
+struct Adafruit_NeoPixel {
 
   // Constructor: number of LEDs, pin number, LED type
   Adafruit_NeoPixel(uint16_t n, uint16_t pin=6,
@@ -232,10 +251,10 @@ class Adafruit_NeoPixel {
              if show() would block (meaning some idle time is available).
   */
   bool canShow(void) {
-    if (endTime > micros()) {
-      endTime = micros();
+    if (endTime > esp_timer_get_time()) {
+      endTime = esp_timer_get_time();
     }
-    return (micros() - endTime) >= 300L;
+    return (esp_timer_get_time() - endTime) >= 300L;
   }
   /*!
     @brief   Get a pointer directly to the NeoPixel data buffer in RAM.
@@ -277,7 +296,7 @@ class Adafruit_NeoPixel {
              output is often used for pixel brightness in animation effects.
   */
   static uint8_t    sine8(uint8_t x) {
-    return pgm_read_byte(&_NeoPixelSineTable[x]); // 0-255 in, 0-255 out
+    return _NeoPixelSineTable[x]; // 0-255 in, 0-255 out
   }
   /*!
     @brief   An 8-bit gamma-correction function for basic pixel brightness
@@ -291,7 +310,7 @@ class Adafruit_NeoPixel {
              need to provide your own gamma-correction function instead.
   */
   static uint8_t    gamma8(uint8_t x) {
-    return pgm_read_byte(&_NeoPixelGammaTable[x]); // 0-255 in, 0-255 out
+    return _NeoPixelGammaTable[x]; // 0-255 in, 0-255 out
   }
   /*!
     @brief   Convert separate red, green and blue values into a single
@@ -337,8 +356,6 @@ class Adafruit_NeoPixel {
   */
   static uint32_t   gamma32(uint32_t x);
 
- protected:
-
 #ifdef NEO_KHZ400  // If 400 KHz NeoPixel support enabled...
   bool              is800KHz;   ///< true if 800 KHz pixels
 #endif
@@ -362,5 +379,9 @@ class Adafruit_NeoPixel {
   uint32_t gpioPin;             ///< Output GPIO PIN
 #endif
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // ADAFRUIT_NEOPIXEL_H

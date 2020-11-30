@@ -45,6 +45,10 @@
 
 #include "Adafruit_NeoPixel.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if defined(TARGET_LPC1768)
   #include <time.h>
 #endif
@@ -56,6 +60,23 @@
 // Note: Adafruit Bluefruit nrf52 does not use this option
 //#define NRF52_DISABLE_INT
 #endif
+
+// Functions added to interface with ESP8266_RTOS_SDK
+// anp = Adafrupt_NeoPixel
+void anp_pin_mode(uint32_t pin, uint32_t pin_mode) {
+  gpio_mode_t gpio_mode = pin_mode ? GPIO_MODE_OUTPUT : GPIO_MODE_INPUT;
+  gpio_config_t config = {
+    .pin_bit_mask = BIT(pin),
+    .mode = gpio_mode,
+    .pull_up_en = GPIO_PULLUP_DISABLE,
+    .pull_down_en = GPIO_PULLDOWN_DISABLE,
+    .intr_type = GPIO_INTR_DISABLE,
+  };
+  gpio_config(&config);
+}
+void anp_digital_write(uint32_t pin, uint32_t pin_level) {
+  gpio_set_level((gpio_num_t) pin, pin_level);
+}
 
 /*!
   @brief   NeoPixel constructor when length, pin and pixel type are known
@@ -99,7 +120,9 @@ Adafruit_NeoPixel::Adafruit_NeoPixel() :
 */
 Adafruit_NeoPixel::~Adafruit_NeoPixel() {
   free(pixels);
-  if(pin >= 0) pinMode(pin, INPUT);
+  if(pin >= 0) {
+    anp_pin_mode(pin, 0);
+  }
 }
 
 /*!
@@ -107,8 +130,8 @@ Adafruit_NeoPixel::~Adafruit_NeoPixel() {
 */
 void Adafruit_NeoPixel::begin(void) {
   if(pin >= 0) {
-    pinMode(pin, OUTPUT);
-    digitalWrite(pin, LOW);
+    anp_pin_mode(pin, 1);
+    anp_digital_write(pin, 0);
   }
   begun = true;
 }
@@ -173,8 +196,8 @@ void Adafruit_NeoPixel::updateType(neoPixelType t) {
 }
 
 #if defined(ESP8266)
-// ESP8266 show() is external to enforce ICACHE_RAM_ATTR execution
-extern "C" void ICACHE_RAM_ATTR espShow(
+// ESP8266 show() is external to enforce IRAM_ATTR execution
+extern "C" void IRAM_ATTR espShow(
   uint16_t pin, uint8_t *pixels, uint32_t numBytes, uint8_t type);
 #elif defined(ESP32)
 extern "C" void espShow(
@@ -227,7 +250,7 @@ void Adafruit_NeoPixel::show(void) {
 
   // NRF52 may use PWM + DMA (if available), may not need to disable interrupt
 #if !( defined(NRF52) || defined(NRF52_SERIES) )
-  noInterrupts(); // Need 100% focus on instruction timing
+  taskDISABLE_INTERRUPTS(); // Need 100% focus on instruction timing
 #endif
 
 #if defined(__AVR__)
@@ -2107,7 +2130,7 @@ void Adafruit_NeoPixel::show(void) {
 
 // ESP8266 ----------------------------------------------------------------
 
-  // ESP8266 show() is external to enforce ICACHE_RAM_ATTR execution
+  // ESP8266 show() is external to enforce IRAM_ATTR execution
   espShow(pin, pixels, numBytes, is800KHz);
 
 #elif defined(KENDRYTE_K210)
@@ -2216,10 +2239,10 @@ void Adafruit_NeoPixel::show(void) {
 // END ARCHITECTURE SELECT ------------------------------------------------
 
 #if !( defined(NRF52) || defined(NRF52_SERIES) )
-  interrupts();
+  taskENABLE_INTERRUPTS();
 #endif
 
-  endTime = micros(); // Save EOD time for latch on next call
+  endTime = esp_timer_get_time(); // Save EOD time for latch on next call
 }
 
 /*!
@@ -2228,11 +2251,11 @@ void Adafruit_NeoPixel::show(void) {
   @param   p  Arduino pin number (-1 = no pin).
 */
 void Adafruit_NeoPixel::setPin(uint16_t p) {
-  if(begun && (pin >= 0)) pinMode(pin, INPUT);
+  if(begun && (pin >= 0)) anp_pin_mode(pin, 0);
   pin = p;
   if(begun) {
-    pinMode(p, OUTPUT);
-    digitalWrite(p, LOW);
+    anp_pin_mode(p, 1);
+    anp_digital_write(p, 0);
   }
 #if defined(__AVR__)
   port    = portOutputRegister(digitalPinToPort(p));
@@ -2599,3 +2622,7 @@ uint32_t Adafruit_NeoPixel::gamma32(uint32_t x) {
   for(uint8_t i=0; i<4; i++) y[i] = gamma8(y[i]);
   return x; // Packed 32-bit return
 }
+
+#ifdef __cplusplus
+}
+#endif
