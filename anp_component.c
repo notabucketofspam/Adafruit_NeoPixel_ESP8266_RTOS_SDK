@@ -23,8 +23,8 @@ void anp_digitalWrite(uint32_t pin, uint32_t pin_level) {
   gpio_set_level((gpio_num_t) pin, pin_level);
 }
 // https://stackoverflow.com/questions/3774193/constructor-for-structs-in-c
-AnpStrip *new_AnpStrip(uint16_t n, uint16_t p, neoPixelType t) {
-  AnpStrip *strip = malloc(sizeof(AnpStrip));
+struct AnpStrip *new_AnpStrip(uint16_t n, uint16_t p, neoPixelType t) {
+  struct AnpStrip *strip = malloc(sizeof(struct AnpStrip));
   strip->begun = false;
   strip->brightness = 0;
   strip->pixels = NULL;
@@ -34,7 +34,7 @@ AnpStrip *new_AnpStrip(uint16_t n, uint16_t p, neoPixelType t) {
   anp_setPin(strip, p);
   return strip;
 }
-void anp_begin(AnpStrip *strip) {
+void anp_begin(struct AnpStrip *strip) {
   if(strip->pin >= 0) {
     anp_pinMode(strip->pin, 1);
     anp_digitalWrite(strip->pin, 0);
@@ -43,20 +43,20 @@ void anp_begin(AnpStrip *strip) {
 }
 // ESP8266 show() is external to enforce IRAM_ATTR execution
 extern void IRAM_ATTR anp_espShow(uint16_t pin, uint8_t *pixels, uint32_t numBytes, uint8_t type);
-void anp_show(AnpStrip *strip) {
+void anp_show(struct AnpStrip *strip) {
   if(!strip->pixels)
     return;
   while(!anp_canShow(strip));
   anp_espShow(strip->pin, strip->pixels, strip->numBytes, strip->is800KHz);
   strip->endTime = esp_timer_get_time();
 }
-bool anp_canShow(AnpStrip *strip) {
+bool anp_canShow(struct AnpStrip *strip) {
   if (strip->endTime > esp_timer_get_time()) {
     strip->endTime = esp_timer_get_time();
   }
   return (esp_timer_get_time() - strip->endTime) >= 300L;
 }
-void anp_setPin(AnpStrip *strip, uint16_t p) {
+void anp_setPin(struct AnpStrip *strip, uint16_t p) {
   if(strip->begun && (strip->pin >= 0))
     anp_pinMode(strip->pin, 0);
   strip->pin = p;
@@ -65,7 +65,7 @@ void anp_setPin(AnpStrip *strip, uint16_t p) {
     anp_digitalWrite(p, 0);
   }
 }
-void anp_setPixelColor_RGB(AnpStrip *strip, uint16_t n, uint8_t r, uint8_t g, uint8_t b) {
+void anp_setPixelColor_RGB(struct AnpStrip *strip, uint16_t n, uint8_t r, uint8_t g, uint8_t b) {
   if(n < strip->numLEDs) {
     if(strip->brightness) { // See notes in setBrightness()
       r = (r * strip->brightness) >> 8;
@@ -84,7 +84,7 @@ void anp_setPixelColor_RGB(AnpStrip *strip, uint16_t n, uint8_t r, uint8_t g, ui
     p[strip->bOffset] = b;
   }
 }
-void anp_setPixelColor_RGBW(AnpStrip *strip, uint16_t n, uint8_t r, uint8_t g, uint8_t b,  uint8_t w) {
+void anp_setPixelColor_RGBW(struct AnpStrip *strip, uint16_t n, uint8_t r, uint8_t g, uint8_t b,  uint8_t w) {
   if(n < strip->numLEDs) {
     if(strip->brightness) { // See notes in setBrightness()
       r = (r * strip->brightness) >> 8;
@@ -104,7 +104,7 @@ void anp_setPixelColor_RGBW(AnpStrip *strip, uint16_t n, uint8_t r, uint8_t g, u
     p[strip->bOffset] = b;
   }
 }
-void anp_setPixelColor_C(AnpStrip *strip, uint16_t n, uint32_t c) {
+void anp_setPixelColor_C(struct AnpStrip *strip, uint16_t n, uint32_t c) {
   if(n < strip->numLEDs) {
     uint8_t *p,
       r = (uint8_t)(c >> 16),
@@ -127,7 +127,7 @@ void anp_setPixelColor_C(AnpStrip *strip, uint16_t n, uint32_t c) {
     p[strip->bOffset] = b;
   }
 }
-void anp_fill(AnpStrip *strip, uint32_t c, uint16_t first, uint16_t count) {
+void anp_fill(struct AnpStrip *strip, uint32_t c, uint16_t first, uint16_t count) {
   uint16_t i, end;
   if(first >= strip->numLEDs) {
     return; // If first LED is past end of strip, nothing to do
@@ -145,7 +145,7 @@ void anp_fill(AnpStrip *strip, uint32_t c, uint16_t first, uint16_t count) {
     anp_setPixelColor_C(strip, i, c);
   }
 }
-void anp_setBrightness(AnpStrip *strip, uint8_t b) {
+void anp_setBrightness(struct AnpStrip *strip, uint8_t b) {
   uint8_t newBrightness = b + 1;
   if(newBrightness != strip->brightness) {
     uint8_t  c,
@@ -162,10 +162,10 @@ void anp_setBrightness(AnpStrip *strip, uint8_t b) {
     strip->brightness = newBrightness;
   }
 }
-void anp_clear(AnpStrip *strip) {
+void anp_clear(struct AnpStrip *strip) {
   memset(strip->pixels, 0, strip->numBytes);
 }
-void anp_updateLength(AnpStrip *strip, uint16_t n) {
+void anp_updateLength(struct AnpStrip *strip, uint16_t n) {
   free(strip->pixels); // Free existing data (if any)
   // Allocate new data -- note: ALL PIXELS ARE CLEARED
   strip->numBytes = n * ((strip->wOffset == strip->rOffset) ? 3 : 4);
@@ -176,7 +176,7 @@ void anp_updateLength(AnpStrip *strip, uint16_t n) {
     strip->numLEDs = strip->numBytes = 0;
   }
 }
-void anp_updateType(AnpStrip *strip, neoPixelType t) {
+void anp_updateType(struct AnpStrip *strip, neoPixelType t) {
   bool oldThreeBytesPerPixel = (strip->wOffset == strip->rOffset); // false if RGBW
   strip->wOffset = (t >> 6) & 0b11; // See notes in header file
   strip->rOffset = (t >> 4) & 0b11; // regarding R/G/B/W offsets
@@ -193,19 +193,19 @@ void anp_updateType(AnpStrip *strip, neoPixelType t) {
       anp_updateLength(strip, strip->numLEDs);
   }
 }
-uint8_t *anp_getPixels(AnpStrip *strip) {
+uint8_t *anp_getPixels(struct AnpStrip *strip) {
   return strip->pixels;
 }
-uint8_t anp_getBrightness(AnpStrip *strip) {
+uint8_t anp_getBrightness(struct AnpStrip *strip) {
   return strip->brightness - 1;
 }
-int16_t anp_getPin(AnpStrip *strip) {
+int16_t anp_getPin(struct AnpStrip *strip) {
   return strip->pin;
 }
-uint16_t anp_numPixels(AnpStrip *strip) {
+uint16_t anp_numPixels(struct AnpStrip *strip) {
   return strip->numLEDs;
 }
-uint32_t anp_getPixelColor(AnpStrip *strip, uint16_t n) {
+uint32_t anp_getPixelColor(struct AnpStrip *strip, uint16_t n) {
   if(n >= strip->numLEDs) return 0; // Out of bounds, return no color.
   uint8_t *p;
   if(strip->wOffset == strip->rOffset) { // Is RGB-type device

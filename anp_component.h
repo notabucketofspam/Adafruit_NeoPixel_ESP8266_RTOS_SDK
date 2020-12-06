@@ -169,7 +169,7 @@ static const uint8_t _NeoPixelGammaTable[256] = {
 void anp_pinMode(uint32_t pin, uint32_t mode);
 void anp_digitalWrite(uint32_t pin, uint32_t level);
 
-typedef struct AnpStrip {
+struct AnpStrip {
 #ifdef NEO_KHZ400  // If 400 KHz NeoPixel support enabled...
   bool              is800KHz;   ///< true if 800 KHz pixels
 #endif
@@ -184,27 +184,27 @@ typedef struct AnpStrip {
   uint8_t           bOffset;    ///< Index of blue byte
   uint8_t           wOffset;    ///< Index of white (==rOffset if no white)
   uint32_t          endTime;    ///< Latch timing reference
-} AnpStrip;
+};
 
-AnpStrip *new_AnpStrip(uint16_t n, uint16_t pin, neoPixelType type);
+struct AnpStrip *new_AnpStrip(uint16_t n, uint16_t pin, neoPixelType type);
 
-void anp_begin(AnpStrip *strip);
-void anp_show(AnpStrip *strip);
-bool anp_canShow(AnpStrip *strip);
-void anp_setPin(AnpStrip *strip, uint16_t p);
-void anp_setPixelColor_RGB(AnpStrip *strip, uint16_t n, uint8_t r, uint8_t g, uint8_t b);
-void anp_setPixelColor_RGBW(AnpStrip *strip, uint16_t n, uint8_t r, uint8_t g, uint8_t b,  uint8_t w);
-void anp_setPixelColor_C(AnpStrip *strip, uint16_t n, uint32_t c);
-void anp_fill(AnpStrip *strip, uint32_t c, uint16_t first, uint16_t count);
-void anp_setBrightness(AnpStrip *strip, uint8_t b);
-void anp_clear(AnpStrip *strip);
-void anp_updateLength(AnpStrip *strip, uint16_t n);
-void anp_updateType(AnpStrip *strip, neoPixelType t);
-uint8_t *anp_getPixels(AnpStrip *strip);
-uint8_t anp_getBrightness(AnpStrip *strip);
-int16_t anp_getPin(AnpStrip *strip);
-uint16_t anp_numPixels(AnpStrip *strip);
-uint32_t anp_getPixelColor(AnpStrip *strip, uint16_t n);
+void anp_begin(struct AnpStrip *strip);
+void anp_show(struct AnpStrip *strip);
+bool anp_canShow(struct AnpStrip *strip);
+void anp_setPin(struct AnpStrip *strip, uint16_t p);
+void anp_setPixelColor_RGB(struct AnpStrip *strip, uint16_t n, uint8_t r, uint8_t g, uint8_t b);
+void anp_setPixelColor_RGBW(struct AnpStrip *strip, uint16_t n, uint8_t r, uint8_t g, uint8_t b,  uint8_t w);
+void anp_setPixelColor_C(struct AnpStrip *strip, uint16_t n, uint32_t c);
+void anp_fill(struct AnpStrip *strip, uint32_t c, uint16_t first, uint16_t count);
+void anp_setBrightness(struct AnpStrip *strip, uint8_t b);
+void anp_clear(struct AnpStrip *strip);
+void anp_updateLength(struct AnpStrip *strip, uint16_t n);
+void anp_updateType(struct AnpStrip *strip, neoPixelType t);
+uint8_t *anp_getPixels(struct AnpStrip *strip);
+uint8_t anp_getBrightness(struct AnpStrip *strip);
+int16_t anp_getPin(struct AnpStrip *strip);
+uint16_t anp_numPixels(struct AnpStrip *strip);
+uint32_t anp_getPixelColor(struct AnpStrip *strip, uint16_t n);
 uint8_t anp_sine8(uint8_t x);
 uint8_t anp_gamma8(uint8_t x);
 uint32_t anp_Color_RGB(uint8_t r, uint8_t g, uint8_t b);
